@@ -10,12 +10,20 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.mindcare.ui.auth.login.LoginScreen
+import com.example.mindcare.ui.auth.signup.SignUpScreen
 import com.example.mindcare.ui.dashboard.DashboardScreen
+import com.example.mindcare.ui.welcome.WelcomeScreen
+import com.example.mindcare.utils.SessionManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject
+    lateinit var sessionManager: SessionManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -32,7 +40,7 @@ class MainActivity : ComponentActivity() {
         }
         */
         lifecycleScope.launch {
-            val isLoggedIn = true //sessionManager.isLoggedIn()
+            val isLoggedIn = sessionManager.isLoggedIn()
             var startDestination = "welcome"
             if (isLoggedIn) {
                 startDestination = "dashboard"
@@ -51,9 +59,9 @@ private fun AppNavigation(navController: NavHostController, startDestination: St
         navController = navController,
         startDestination = startDestination
     ) {
-        composable("welcome") {/* WelcomeScreen(navController) */}
-        composable("login") {/* LoginScreen(navController) */}
-        composable("register") {/* RegisterScreen(navController) */}
+        composable("welcome") { WelcomeScreen(navController) }
+        composable("login") { LoginScreen(navController) }
+        composable("signup") { SignUpScreen(navController) }
         composable("dashboard") { DashboardScreen(navController) }
     }
 }

@@ -24,6 +24,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.mindcare.ui.dashboard.settings.SettingsScreen
 
 @Composable
 fun DashboardScreen(
@@ -97,6 +98,7 @@ fun MyNavHost(navControllerMain: NavController, navController: NavHostController
         composable("Trends") {
         }
         composable("Settings") {
+            SettingsScreen(navControllerMain = navControllerMain, navController = navController, innerPadding = innerPadding)
         }
     }
 }
