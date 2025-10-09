@@ -3,6 +3,7 @@ package com.example.mindcare.di
 import android.content.Context
 import androidx.room.Room
 import com.example.mindcare.data.database.AppDatabase
+import com.example.mindcare.data.database.DiaryDao
 import com.example.mindcare.data.database.UserDao
 import dagger.Module
 import dagger.Provides
@@ -33,11 +34,9 @@ object DatabaseModule {
         return appDatabase.userDao()
     }
 
-    /*
     @Provides
     @Singleton
     fun provideDiaryDao(appDatabase: AppDatabase): DiaryDao {
         return appDatabase.diaryDao()
     }
-    */
 }

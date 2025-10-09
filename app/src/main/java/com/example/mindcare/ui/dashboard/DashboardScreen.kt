@@ -24,6 +24,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.mindcare.ui.dashboard.home.HomeScreen
 import com.example.mindcare.ui.dashboard.settings.SettingsScreen
 
 @Composable
@@ -89,7 +90,7 @@ fun MyNavHost(navControllerMain: NavController, navController: NavHostController
         startDestination = "Home"
     ) {
         composable("Home") {
-            /* HomeScreen(navControllerMain = navControllerMain, navController = navController, innerPadding = innerPadding, viewModel = homeViewModel, lazyGridState = homeLazyGridState) */
+            HomeScreen(navController = navController)
         }
         composable("Diary") {
         }
