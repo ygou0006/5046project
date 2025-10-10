@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.mindcare.ui.dashboard.diary.DiaryScreen
 import com.example.mindcare.ui.dashboard.home.HomeScreen
 import com.example.mindcare.ui.dashboard.settings.SettingsScreen
+import com.example.mindcare.ui.dashboard.trends.TrendsScreen
 import com.example.mindcare.ui.history.HistoryScreen
 
 @Composable
@@ -101,6 +102,7 @@ fun MyNavHost(navControllerMain: NavController, navController: NavHostController
             HistoryScreen(navController = navController)
         }
         composable("Trends") {
+            TrendsScreen(navController = navController)
         }
         composable("Settings") {
             SettingsScreen(navControllerMain = navControllerMain, navController = navController, innerPadding = innerPadding)

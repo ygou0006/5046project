@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.mindcare.data.models.User
 import com.example.mindcare.data.repository.UserRepository
+import com.example.mindcare.service.NotificationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +25,8 @@ import kotlinx.coroutines.flow.asStateFlow
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val notificationService: NotificationService
 ) : ViewModel() {
     // UI status
     private val _uiState = mutableStateOf<ProfileUiState>(ProfileUiState.Loading)
@@ -105,6 +107,7 @@ class SettingsViewModel @Inject constructor(
     fun loginOut(): Flow<ProfileResult> = flow {
         try {
             sessionManager.clearSession()
+            notificationService.cancelAllNotifications()
             emit(ProfileResult.Success)
         } catch (e: Exception) {
             emit(ProfileResult.Error(e.message ?: "Login out failed"))
@@ -115,6 +118,12 @@ class SettingsViewModel @Inject constructor(
     fun toggleNotifications(enabled: Boolean) {
         _notificationsEnabled.value = enabled
         sessionManager.saveConfig("notificationsEnabled", if (enabled) "TRUE" else "FALSE")
+
+        if (enabled) {
+            notificationService.enableAllNotifications()
+        } else {
+            notificationService.cancelAllNotifications()
+        }
     }
 }
 

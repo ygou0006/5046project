@@ -39,4 +39,10 @@ object DatabaseModule {
     fun provideDiaryDao(appDatabase: AppDatabase): DiaryDao {
         return appDatabase.diaryDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideContext(@ApplicationContext context: Context): Context {
+        return context
+    }
 }

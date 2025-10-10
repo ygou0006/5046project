@@ -3,6 +3,7 @@ package com.example.mindcare.ui.auth.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mindcare.data.repository.UserRepository
+import com.example.mindcare.service.NotificationService
 import com.example.mindcare.utils.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val notificationService: NotificationService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -56,6 +58,7 @@ class LoginViewModel @Inject constructor(
                         // Save to Session
                         sessionManager.saveUser(user)
                         sessionManager.saveConfig("notificationsEnabled", "TRUE")
+                        notificationService.enableAllNotifications()
 
                         _uiState.value = _uiState.value.copy(isLoading = false)
                         onSuccess()
