@@ -75,7 +75,7 @@ class SignUpViewModel @Inject constructor(
         )
     }
 
-    fun signUp(onSuccess: () -> Unit) {
+    fun signUp(onSuccess: (Boolean) -> Unit) {
         if (isFormValid()) {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
@@ -97,36 +97,44 @@ class SignUpViewModel @Inject constructor(
                         if (userResult.isSuccess) {
                             val user = userResult.getOrNull()
                             if (user != null) {
-                                // Save to Session
-                                sessionManager.saveUser(user)
-                                sessionManager.saveConfig("notificationsEnabled", "TRUE")
-                                notificationService.enableAllNotifications()
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    signUpSuccess = true,
+                                    signUpError = ""
+                                )
 
-                                _uiState.value = _uiState.value.copy(isLoading = false)
-                                onSuccess()
+                                onSuccess(true)
                             } else {
                                 _uiState.value = _uiState.value.copy(
                                     isLoading = false,
+                                    signUpSuccess = false,
                                     signUpError = "User creation failed"
                                 )
+                                onSuccess(false)
                             }
                         } else {
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
+                                signUpSuccess = false,
                                 signUpError = userResult.exceptionOrNull()?.message ?: "Sign up failed"
                             )
+                            onSuccess(false)
                         }
                     } else {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
+                            signUpSuccess = false,
                             signUpError = "Firebase user creation failed"
                         )
+                        onSuccess(false)
                     }
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
+                        signUpSuccess = false,
                         signUpError = e.message!!
                     )
+                    onSuccess(false)
                 }
             }
         } else {
@@ -135,8 +143,10 @@ class SignUpViewModel @Inject constructor(
                 emailError = validateEmail(_uiState.value.email),
                 passwordError = validatePassword(_uiState.value.password),
                 confirmPasswordError = validateConfirmPassword(_uiState.value.confirmPassword),
-                termsError = if (!_uiState.value.isTermsAccepted) "You must accept the terms" else ""
+                termsError = if (!_uiState.value.isTermsAccepted) "You must accept the terms" else "",
+                signUpSuccess = false,
             )
+            onSuccess(false)
         }
     }
 
@@ -167,7 +177,10 @@ class SignUpViewModel @Inject constructor(
     private fun validatePassword(password: String): String {
         return when {
             password.isBlank() -> "Password is required"
-            password.length < 6 -> "Password must be at least 6 characters"
+            password.length < 8 -> "Password must be at least 8 characters"
+            !password.any { it.isUpperCase() } -> "Password must contain at least one uppercase letter"
+            !password.any { it.isLowerCase() } -> "Password must contain at least one lowercase letter"
+            !password.any { !it.isLetterOrDigit() } -> "Password must contain at least one special character"
             else -> ""
         }
     }
@@ -206,5 +219,6 @@ data class SignUpUiState(
     val passwordError: String = "",
     val confirmPasswordError: String = "",
     val termsError: String = "",
-    val signUpError: String = ""
+    val signUpError: String = "",
+    val signUpSuccess: Boolean = false
 )

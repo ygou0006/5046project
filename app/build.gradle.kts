@@ -74,6 +74,12 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
 
+    // ML Kit Text Recognition
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
+
+    // For image loading and processing
+    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("io.coil-kt:coil:2.4.0")
     // Map
     implementation("org.osmdroid:osmdroid-android:6.1.16")
     implementation("org.osmdroid:osmdroid-wms:6.1.16")

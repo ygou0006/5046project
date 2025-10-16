@@ -175,7 +175,6 @@ fun SignUpScreen(
         Button(
             onClick = {
                 viewModel.signUp {
-                    navController.navigate("dashboard")
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -200,6 +199,15 @@ fun SignUpScreen(
                 text = uiState.signUpError,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        if (uiState.signUpSuccess) {
+            Text(
+                text = "Registration successful! Please sign in.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 8.dp)
             )
         }

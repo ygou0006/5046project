@@ -2,19 +2,17 @@ package com.example.mindcare.ui.dashboard.diary
 
 import android.app.DatePickerDialog
 import android.content.Context
+import android.net.Uri
 import android.widget.DatePicker
-import androidx.compose.foundation.clickable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,25 +35,45 @@ fun DiaryScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.processImageFromUri(context, it)
+        }
+    }
+
     // Handling error messages
     LaunchedEffect(uiState.errorMessage) {
         if (uiState.errorMessage != null) {
-            // Display Snackbar
+            // Display Snackbar or handle error
         }
     }
 
     // Processing success message
     LaunchedEffect(uiState.showSuccessMessage) {
         if (uiState.showSuccessMessage) {
-            // Successful prompt
+            // Handle successful operation
         }
+    }
+
+    // Show download dialog when needed
+    if (uiState.showDownloadDialog) {
+        ModelDownloadDialog(
+            isDownloading = uiState.isDownloadingModel,
+            downloadProgress = uiState.downloadProgress,
+            onDownload = { viewModel.downloadTextRecognitionModel() },
+            onDismiss = { viewModel.hideDownloadDialog() }
+        )
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp).padding(top = 48.dp)
+            .padding(16.dp)
+            .padding(top = 48.dp)
     ) {
         // Title
         Text(
@@ -79,16 +97,10 @@ fun DiaryScreen(
         // Note input section
         NoteInputSection(
             note = uiState.note,
-            onNoteChange = { note -> viewModel.updateNote(note) }
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Save button
-        SaveButtonSection(
-            isEnabled = uiState.isFormValid && !uiState.isLoading,
-            isLoading = uiState.isLoading,
-            onSave = { viewModel.saveEntry { } }
+            onNoteChange = { note -> viewModel.updateNote(note) },
+            onPickImage = { imagePickerLauncher.launch("image/*") },
+            onClearNote = { viewModel.clearNote() },
+            isProcessingImage = uiState.isProcessingImage
         )
 
         // Error message
@@ -107,6 +119,15 @@ fun DiaryScreen(
                 onDismiss = { viewModel.clearSuccessMessage() }
             )
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Save button
+        SaveButtonSection(
+            isEnabled = uiState.isFormValid && !uiState.isLoading,
+            isLoading = uiState.isLoading,
+            onSave = { viewModel.saveEntry { } }
+        )
     }
 }
 
@@ -250,7 +271,10 @@ fun DateAndMoodSelectionSection(
 @Composable
 private fun NoteInputSection(
     note: String,
-    onNoteChange: (String) -> Unit
+    onNoteChange: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onClearNote: () -> Unit,
+    isProcessingImage: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -280,6 +304,62 @@ private fun NoteInputSection(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Extract Text from Image Button
+                Button(
+                    onClick = onPickImage,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE3F2FD),
+                        contentColor = MindCareBlue
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
+                ) {
+                    if (isProcessingImage) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MindCareBlue,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Processing Image...")
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.AddCircle,
+                            contentDescription = "Extract text from image",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Extract Text from Image")
+                    }
+                }
+
+                Button(
+                    onClick = onClearNote,
+                    modifier = Modifier
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFFEBEE),
+                        contentColor = Color(0xFFD32F2F)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear note",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Clear")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = note,
                 onValueChange = onNoteChange,
@@ -288,7 +368,7 @@ private fun NoteInputSection(
                     .height(120.dp),
                 placeholder = {
                     Text(
-                        text = "Write your thoughts",
+                        text = "Write your thoughts or extract text from an image",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 },
@@ -325,7 +405,7 @@ private fun SaveButtonSection(
             Spacer(modifier = Modifier.width(8.dp))
             Text("Saving...")
         } else {
-            Text("Save Entry", fontSize = 18.sp,)
+            Text("Save Entry", fontSize = 18.sp)
         }
     }
 }
@@ -390,6 +470,53 @@ private fun SuccessMessage(
             }
         }
     }
+}
+
+@Composable
+fun ModelDownloadDialog(
+    isDownloading: Boolean,
+    downloadProgress: Int,
+    onDownload: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isDownloading) onDismiss() },
+        title = { Text("Text Recognition Model Required") },
+        text = {
+            Column {
+                Text("The text recognition model needs to be downloaded to extract text from images. This will only happen once.")
+
+                if (isDownloading) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Downloading: $downloadProgress%")
+                    LinearProgressIndicator(
+                        progress = { downloadProgress / 100f },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Please wait...", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("File size: ~30MB", style = MaterialTheme.typography.bodySmall)
+                    Text("Requires internet connection", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            if (!isDownloading) {
+                Button(onClick = onDownload) {
+                    Text("Download Now")
+                }
+            }
+        },
+        dismissButton = {
+            if (!isDownloading) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        }
+    )
 }
 
 // Display date selector
