@@ -1,5 +1,7 @@
 package com.example.mindcare.ui.dashboard.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,14 +10,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -32,6 +38,14 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val diaryEntries by viewModel.diaryEntries.collectAsState()
+    val context = LocalContext.current
+
+    // File picker launcher for selecting CSV files
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { viewModel.loadHeartRateDataFromUri(it) }
+    }
 
     // Handling error messages
     LaunchedEffect(uiState.errorMessage) {
@@ -68,6 +82,23 @@ fun HomeScreen(
 
         // AI Insights Card
         AiInsightsCard(insights = uiState.aiInsights, recommendations = uiState.recommendations)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Heart Rate Analysis Card
+        HeartRateAnalysisCard(
+            currentRecord = uiState.currentHeartRateRecord,
+            totalRecords = uiState.heartRateRecords.size,
+            currentIndex = uiState.currentHeartRateIndex,
+            onPrevious = { viewModel.previousHeartRateRecord() },
+            onNext = { viewModel.nextHeartRateRecord() },
+            onLoadFile = {
+                // Open file picker to select CSV file from SD card
+                filePickerLauncher.launch("text/comma-separated-values")
+            },
+            isLoading = uiState.isLoadingHeartRateData,
+            errorMessage = uiState.errorMessage
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -275,15 +306,245 @@ private fun HorizontalMoodOption(
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             textAlign = TextAlign.Center
         )
-        /*
+    }
+}
+
+@Composable
+private fun HeartRateAnalysisCard(
+    currentRecord: HeartRateRecord?,
+    totalRecords: Int,
+    currentIndex: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onLoadFile: () -> Unit,
+    isLoading: Boolean,
+    errorMessage: String?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F4FD)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Heart Rate Analysis",
+                    tint = Color(0xFF2196F3),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Heart Rate Analysis",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color(0xFF2196F3),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Display error message if any
+            if (!errorMessage.isNullOrEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                ) {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFD32F2F),
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = Color(0xFF2196F3)
+                    )
+                }
+            } else if (currentRecord == null) {
+                Text(
+                    text = "Click 'Load File' to select a CSV file from your device for analysis",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                // Display current record details
+                HeartRateRecordDetails(record = currentRecord)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Navigation controls
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Load file button
+                Button(
+                    onClick = onLoadFile,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                    enabled = !isLoading
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Load File",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Load File")
+                }
+
+                // Navigation buttons
+                Row {
+                    // Previous button
+                    IconButton(
+                        onClick = onPrevious,
+                        enabled = currentIndex > 0 && !isLoading
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Previous",
+                            tint = if (currentIndex > 0) Color(0xFF2196F3) else Color.Gray
+                        )
+                    }
+
+                    // Current position indicator
+                    Text(
+                        text = "${currentIndex + 1}/$totalRecords",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    // Next button
+                    IconButton(
+                        onClick = onNext,
+                        enabled = currentIndex < totalRecords - 1 && !isLoading
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = "Next",
+                            tint = if (currentIndex < totalRecords - 1) Color(0xFF2196F3) else Color.Gray
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeartRateRecordDetails(record: HeartRateRecord) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Record data
         Text(
-            text = mood.description,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center,
-            maxLines = 2
+            text = "Current Record Analysis",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
         )
-        */
+
+        // Display record details in a grid
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                RecordDetailItem("Age", record.age.toString())
+                RecordDetailItem("Gender", if (record.gender == 1) "Male" else "Female")
+                RecordDetailItem("Heart Rate", "${record.heartRate} bpm")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                RecordDetailItem("Systolic BP", "${record.systolicBP} mmHg")
+                RecordDetailItem("Diastolic BP", "${record.diastolicBP} mmHg")
+                RecordDetailItem("Blood Sugar", record.bloodSugar.toString())
+            }
+        }
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                RecordDetailItem("CK-MB", record.ckMb.toString())
+                RecordDetailItem("Troponin", record.troponin.toString())
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                RecordDetailItem("Result", record.result ?: "Not provided")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Analysis result and recommendation
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = "Analysis Result:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = record.analysisResult,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Recommendation:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = record.recommendation,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordDetailItem(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

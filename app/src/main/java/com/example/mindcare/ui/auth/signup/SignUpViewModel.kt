@@ -5,11 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.example.mindcare.data.repository.UserRepository
 import com.example.mindcare.service.NotificationService
 import com.example.mindcare.utils.SessionManager
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
@@ -18,6 +22,8 @@ class SignUpViewModel @Inject constructor(
     private val sessionManager: SessionManager,
     private val notificationService: NotificationService
 ) : ViewModel() {
+
+    private val auth: FirebaseAuth = Firebase.auth
 
     private val _uiState = MutableStateFlow(SignUpUiState())
     val uiState: StateFlow<SignUpUiState> = _uiState.asStateFlow()
@@ -75,38 +81,51 @@ class SignUpViewModel @Inject constructor(
 
             viewModelScope.launch {
                 try {
-                    val result = userRepository.createUser(
-                        email = _uiState.value.email,
-                        password = _uiState.value.password,
-                        name = _uiState.value.name
-                    )
+                    // Firebase Auth Create User
+                    val result = auth.createUserWithEmailAndPassword(
+                        _uiState.value.email,
+                        _uiState.value.password
+                    ).await()
 
-                    if (result.isSuccess) {
-                        val user = result.getOrNull()
-                        if (user != null) {
-                            // Save to Session
-                            sessionManager.saveUser(user)
-                            sessionManager.saveConfig("notificationsEnabled", "TRUE")
-                            notificationService.enableAllNotifications()
+                    val firebaseUser = result.user
+                    if (firebaseUser != null) {
+                        val userResult = userRepository.createUserFromFirebase(
+                            firebaseUser = firebaseUser,
+                            name = _uiState.value.name
+                        )
 
-                            _uiState.value = _uiState.value.copy(isLoading = false)
-                            onSuccess()
+                        if (userResult.isSuccess) {
+                            val user = userResult.getOrNull()
+                            if (user != null) {
+                                // Save to Session
+                                sessionManager.saveUser(user)
+                                sessionManager.saveConfig("notificationsEnabled", "TRUE")
+                                notificationService.enableAllNotifications()
+
+                                _uiState.value = _uiState.value.copy(isLoading = false)
+                                onSuccess()
+                            } else {
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    signUpError = "User creation failed"
+                                )
+                            }
                         } else {
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
-                                signUpError = "User creation failed"
+                                signUpError = userResult.exceptionOrNull()?.message ?: "Sign up failed"
                             )
                         }
                     } else {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            signUpError = result.exceptionOrNull()?.message ?: "Sign up failed"
+                            signUpError = "Firebase user creation failed"
                         )
                     }
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        signUpError = "Sign up failed: ${e.message}"
+                        signUpError = e.message!!
                     )
                 }
             }

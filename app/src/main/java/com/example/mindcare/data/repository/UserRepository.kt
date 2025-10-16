@@ -2,6 +2,7 @@ package com.example.mindcare.data.repository
 
 import com.example.mindcare.data.database.UserDao
 import com.example.mindcare.data.models.User
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.*
@@ -30,6 +31,23 @@ class UserRepository @Inject constructor(
                 name = name
             )
 
+            userDao.insertUser(user)
+            Result.success(user)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createUserFromFirebase(firebaseUser: FirebaseUser, name: String): Result<User> = withContext(Dispatchers.IO) {
+        val user = User(
+            id = firebaseUser.uid,
+            email = firebaseUser.email ?: "",
+            password = firebaseUser.email ?: "",
+            name = name,
+            createdAt = System.currentTimeMillis(),
+            lastLoginAt = System.currentTimeMillis()
+        )
+        try {
             userDao.insertUser(user)
             Result.success(user)
         } catch (e: Exception) {

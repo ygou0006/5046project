@@ -5,11 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.example.mindcare.data.repository.UserRepository
 import com.example.mindcare.service.NotificationService
 import com.example.mindcare.utils.SessionManager
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
@@ -18,6 +22,8 @@ class LoginViewModel @Inject constructor(
     private val sessionManager: SessionManager,
     private val notificationService: NotificationService
 ) : ViewModel() {
+
+    private val auth: FirebaseAuth = Firebase.auth
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -48,30 +54,64 @@ class LoginViewModel @Inject constructor(
 
             viewModelScope.launch {
                 try {
-                    // Verify user credentials
-                    val user = userRepository.getUserByEmail(_uiState.value.email)
+                    // Firebase Auth Login
+                    val result = auth.signInWithEmailAndPassword(
+                        _uiState.value.email,
+                        _uiState.value.password
+                    ).await()
 
-                    if (user != null && user.password == _uiState.value.password) {
-                        // Update last login time
-                        userRepository.updateLastLogin(user.id)
+                    val firebaseUser = result.user
+                    if (firebaseUser != null) {
+                        val user = userRepository.getUserByEmail(_uiState.value.email)
 
-                        // Save to Session
-                        sessionManager.saveUser(user)
-                        sessionManager.saveConfig("notificationsEnabled", "TRUE")
-                        notificationService.enableAllNotifications()
+                        if (user != null) {
+                            userRepository.updateLastLogin(user.id)
 
-                        _uiState.value = _uiState.value.copy(isLoading = false)
-                        onSuccess()
+                            // Save to Session
+                            sessionManager.saveUser(user)
+                            sessionManager.saveConfig("notificationsEnabled", "TRUE")
+                            notificationService.enableAllNotifications()
+
+                            _uiState.value = _uiState.value.copy(isLoading = false)
+                            onSuccess()
+                        } else {
+                            val userResult = userRepository.createUserFromFirebase(
+                                firebaseUser = firebaseUser,
+                                name = firebaseUser.displayName ?: "User"
+                            )
+                            if (userResult.isSuccess) {
+                                val newUser = userResult.getOrNull()
+                                if (newUser != null) {
+                                    // Save to Session
+                                    sessionManager.saveUser(newUser)
+                                    sessionManager.saveConfig("notificationsEnabled", "TRUE")
+                                    notificationService.enableAllNotifications()
+
+                                    _uiState.value = _uiState.value.copy(isLoading = false)
+                                    onSuccess()
+                                } else {
+                                    _uiState.value = _uiState.value.copy(
+                                        isLoading = false,
+                                        loginError = "Login failed"
+                                    )
+                                }
+                            } else {
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    loginError = userResult.exceptionOrNull()?.message ?: "Login failed"
+                                )
+                            }
+                        }
                     } else {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            loginError = "Invalid email or password"
+                            loginError = "Firebase authentication failed"
                         )
                     }
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        loginError = "Login failed: ${e.message}"
+                        loginError = e.message!!
                     )
                 }
             }
