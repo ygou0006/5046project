@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "337145881563",
+    "project_id": "week7-gouyi",
+    "storage_bucket": "week7-gouyi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:337145881563:android:c8210c495ad804706a3dfe",
+        "android_client_info": {
+          "package_name": "com.example.mindcare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOsxV4A2NW_fX1w8fxHSu7COOASOr8CJ8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
